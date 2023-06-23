@@ -127,24 +127,51 @@ def calculate_the_probability_to_unknown_node_get_sick(G):
 
 
 def calculate_modularity_and_community(
-    G: nx.classes.graph.Graph = None, network_community_method: object = None
+        G: nx.classes.graph.Graph = None, network_community_method: object = None
 ) -> None:
     start_time = time()
     communities = network_community_method
     fig, axs = plt.subplots(
-        len(communities) // 3 + 1, 3, figsize=(15, (len(communities) // 3 + 1) * 3)
-    )  # Adjust the number of rows as needed
-    plt.subplots_adjust(wspace=0.4, hspace=0.6)  # Adjust the spacing between subplots
+        len(communities) // 3 + 1, 3,
+        figsize=(20, len(communities) // 3 + 1)
+    )  # Increase the figure size
+    plt.subplots_adjust(wspace=0.2, hspace=0.5)
+    community_differences = []
+    community_differences_sd = []
     for i, comm in enumerate(communities):
         subgraph = G.subgraph(comm)
         # Create a figure with a custom size
+        labels = [subgraph.nodes[item]["label"] for item in subgraph.nodes()]
+        unique_label = set(labels)
+        if len(unique_label) > 1:
+            community_differences.append(
+                max([labels.count(label) for label in unique_label]) / len(subgraph.nodes())
+            )
+            community_differences_sd.append(
+                stdev([labels.count(label) for label in unique_label])
+            )
+        elif unique_label == 1:
+            community_differences.append(
+                1.0
+            )
+            community_differences_sd.append(
+                0.0
+            )
         # Calculate degree centrality for each node
         centrality = nx.degree_centrality(subgraph)
         # Set node size proportional to degree centrality
         node_sizes = [centrality[node] * 1000 for node in subgraph.nodes()]
         node_colors = [node[1]["color"] for node in subgraph.nodes(data=True)]
         pos = nx.circular_layout(subgraph)
+
         # Create a subplot with 3 columns
+        if len(unique_label) > 1:
+            axs[i // 3, i % 3].set_title(
+                f"Community {i} avg : {max([labels.count(label) for label in unique_label]) / len(subgraph.nodes())}  sd : {stdev([labels.count(label) for label in unique_label])}")
+        elif len(unique_label) == 1:
+            axs[i // 3, i % 3].set_title(
+                f"Community {i} avg : {max([labels.count(label) for label in unique_label]) / len(subgraph.nodes())} sd : {0.0}")
+        axs[i // 3, i % 3].axis("off")
 
         nx.draw_networkx_nodes(
             subgraph,
@@ -161,10 +188,17 @@ def calculate_modularity_and_community(
             alpha=0.5,
             ax=axs[i // 3, i % 3],  # Add this line to draw edges on a specific axis
         )
-        axs[i // 3, i % 3].set_title(f"Community {i}")
-        axs[i // 3, i % 3].axis("off")
+
     fig.tight_layout()
-    print("TIME FINISHED : ", time() - start_time)
+    print(
+        "TIME FINISHED : ",
+        time() - start_time,
+        " \n Average difference of each community labels : ",
+        sum(community_differences) / len(community_differences),
+        "\n Average of each community Standard deviation : ",
+        sum(community_differences_sd) / len(community_differences_sd),
+    )
+
 
 
 def visualize(
