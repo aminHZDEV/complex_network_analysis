@@ -4,7 +4,8 @@ from time import time
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-
+from statistics import stdev
+import powerlaw
 
 def colorize_graph(
     G: nx.classes.graph.Graph = None, node_path_csv: str = "nodes.csv"
@@ -199,8 +200,6 @@ def calculate_modularity_and_community(
         sum(community_differences_sd) / len(community_differences_sd),
     )
 
-
-
 def visualize(
     params: list = None,
     spaceFromLeftNumber: int = 20,
@@ -310,6 +309,7 @@ def calculateMetrics(G: nx.classes.graph.Graph = None) -> list:
     averageShortestPath = "Average shortest path : " + str(weighted_avg_shortest_path)
     numberOfNodes = "Number of nodes : " + str(G.number_of_nodes())
     numberOfEdges = "Number of edges : " + str(G.number_of_edges())
+    average_degree = "Average degree of nodes : " + str(sum(dict(G.degree).values()) / len(G))
     density = "Density : " + str(nx.density(G))
     clusteringCoefficient1 = "Clustering coefficient 1 " + str(nx.transitivity(G))
     clusteringCoefficient2 = "Clustering coefficient 2 " + str(nx.average_clustering(G))
@@ -334,10 +334,31 @@ def calculateMetrics(G: nx.classes.graph.Graph = None) -> list:
         for k, v in sorted(nx.degree_centrality(G).items(), key=lambda item: item[1])
     }
     degreeCentrality = "Top 5 degree centrality path : " + str(list(dc)[:5])
+    # Get the degree sequence
+    degrees = [deg for _, deg in G.degree()]
+
+    # Fit a power law distribution to the degree sequence
+    fit = powerlaw.Fit(degrees)
+
+    # Print the estimated exponent of the power law
+    alpha_for_degree_dist = f"Alpha: {fit.alpha}"
+
+    # Calculate maximum possible degree centrality
+    max_dc = (len(G.nodes()) - 1)
+
+    # Calculate degree centrality for each node
+    dc_values = list(nx.degree_centrality(G).values())
+
+    # Calculate centralization
+    centralization = (sum([max_dc - dc for dc in dc_values])) / (len(G.nodes()) - 1) ** 2
+
+    # Print result
+    centraliztion = " centralization : "+ str(centralization)
 
     params.append(numberOfNodes)
     params.append(numberOfEdges)
     params.append(density)
+    params.append(average_degree)
     params.append(clusteringCoefficient1)
     params.append(clusteringCoefficient2)
     params.append(diameter)
@@ -346,6 +367,9 @@ def calculateMetrics(G: nx.classes.graph.Graph = None) -> list:
     params.append(closenessCentrality)
     params.append(degreeCentrality)
     params.append(averageShortestPath)
+    params.append(alpha_for_degree_dist)
+    params.append(centraliztion)
     print("TIME FINISHED : ", time() - startTime)
 
     return params
+
